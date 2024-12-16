@@ -92,8 +92,12 @@ const loginUser = async (req, res) => {
       process.env.JWT_SECRET, // Secret key
       { expiresIn: "1h" } // Expiration
     );
-
-    res.status(200).json({ token });
+    delete user.password;
+    const userDto = user;
+    res.status(200).json({
+      token,
+      userDto,
+    });
   } catch (err) {
     console.error("Error logging in user:", err);
     res.status(500).json({ message: "Internal server error." });

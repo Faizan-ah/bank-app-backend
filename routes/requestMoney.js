@@ -5,15 +5,16 @@ const {
   getMoneyRequests,
   requestMoney,
 } = require("../controllers/requestMoney");
+const authenticateToken = require("../middlewares/authMiddleware");
 
 const router = express.Router();
 
-router.post("/request-money", requestMoney);
+router.post("/request-money", authenticateToken, requestMoney);
 
-router.post("/approve-request", approveRequest);
+router.post("/approve-request", authenticateToken, approveRequest);
 
-router.post("/decline-request", declineRequest);
+router.post("/decline-request", authenticateToken, declineRequest);
 
-router.get("/money-requests/:userId", getMoneyRequests);
+router.get("/money-requests", authenticateToken, getMoneyRequests);
 
 module.exports = router;

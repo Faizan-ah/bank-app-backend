@@ -1,11 +1,14 @@
 const pool = require("../db");
 
-const requestMoney = async (req, res) => {
-  const { requesterId, recipientPhone, amount } = req.body;
+const authenticateToken = require("../middlewares/authMiddleware");
 
-  if (!requesterId || !recipientPhone || !amount) {
+const requestMoney = async (req, res) => {
+  const { recipientPhone, amount } = req.body;
+  const requesterId = req.user.id;
+
+  if (!recipientPhone || !amount) {
     return res.status(400).json({
-      message: "Requester ID, recipient phone number, and amount are required.",
+      message: "Recipient phone number and amount are required.",
     });
   }
 
@@ -21,8 +24,15 @@ const requestMoney = async (req, res) => {
       "SELECT * FROM users WHERE phone_number = $1",
       [recipientPhone]
     );
+
     if (recipient.rowCount === 0) {
       return res.status(404).json({ message: "Recipient not found." });
+    }
+
+    if (recipient.rows[0].id === requesterId) {
+      return res
+        .status(500)
+        .json({ message: "Recipient and Requester can't be the same." });
     }
 
     await pool.query(
@@ -38,16 +48,16 @@ const requestMoney = async (req, res) => {
 };
 
 const approveRequest = async (req, res) => {
-  const { requestId, recipientId } = req.body;
+  const { requestId } = req.body;
+  const recipientId = req.user.id;
 
-  if (!requestId || !recipientId) {
+  if (!requestId) {
     return res.status(400).json({
-      message: "Request ID and recipient ID are required.",
+      message: "Request ID is required.",
     });
   }
-
+  console.log(recipientId);
   try {
-    // 1. Fetch the money request by ID
     const request = await pool.query(
       "SELECT * FROM money_requests WHERE id = $1 AND recipient_id = $2 AND status = 'pending'",
       [requestId, recipientId]
@@ -58,10 +68,10 @@ const approveRequest = async (req, res) => {
         .json({ message: "Request not found or already approved/declined." });
     }
 
-    // 2. Check if the recipient has enough balance to approve the transfer
     const recipient = await pool.query("SELECT * FROM users WHERE id = $1", [
       recipientId,
     ]);
+
     if (recipient.rowCount === 0) {
       return res.status(404).json({ message: "Recipient not found." });
     }
@@ -70,18 +80,16 @@ const approveRequest = async (req, res) => {
       return res.status(400).json({ message: "Insufficient funds." });
     }
 
-    // 3. Proceed with the fund transfer (similar to the `initiateTransfer` logic)
     const requester = await pool.query("SELECT * FROM users WHERE id = $1", [
       request.rows[0].requester_id,
     ]);
 
-    // Deduct amount from recipient's balance
+    // Proceed with the transfer and update balances
     await pool.query("UPDATE users SET balance = balance - $1 WHERE id = $2", [
       request.rows[0].amount,
       recipientId,
     ]);
 
-    // Add amount to requester's balance
     await pool.query("UPDATE users SET balance = balance + $1 WHERE id = $2", [
       request.rows[0].amount,
       requester.rows[0].id,
@@ -109,16 +117,17 @@ const approveRequest = async (req, res) => {
 };
 
 const declineRequest = async (req, res) => {
-  const { requestId, recipientId } = req.body;
+  const { requestId } = req.body;
+  const recipientId = req.user.id;
 
-  if (!requestId || !recipientId) {
+  if (!requestId) {
     return res.status(400).json({
-      message: "Request ID and recipient ID are required.",
+      message: "Request ID is required.",
     });
   }
 
   try {
-    // 1. Fetch the money request by ID
+    // Fetch the money request by ID for the recipient
     const request = await pool.query(
       "SELECT * FROM money_requests WHERE id = $1 AND recipient_id = $2 AND status = 'pending'",
       [requestId, recipientId]
@@ -129,7 +138,7 @@ const declineRequest = async (req, res) => {
         .json({ message: "Request not found or already processed." });
     }
 
-    // 2. Update the request status to 'declined'
+    // Update the request status to 'declined'
     await pool.query(
       "UPDATE money_requests SET status = 'declined', updated_at = NOW() WHERE id = $1",
       [requestId]
@@ -143,14 +152,10 @@ const declineRequest = async (req, res) => {
 };
 
 const getMoneyRequests = async (req, res) => {
-  const { userId } = req.params;
-
-  if (!userId) {
-    return res.status(400).json({ message: "User ID is required." });
-  }
+  const userId = req.user.id;
 
   try {
-    // Fetch all pending requests for the user
+    // Fetch all pending requests for the user (as a recipient)
     const requests = await pool.query(
       "SELECT * FROM money_requests WHERE recipient_id = $1 AND status = 'pending'",
       [userId]

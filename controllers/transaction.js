@@ -82,12 +82,15 @@ const initiateTransfer = async (req, res) => {
 const getTransactionDetails = async (req, res) => {
   const { id } = req.params;
 
+  // The user ID from the token (added by the middleware)
+  const userId = req.user.id;
+
   if (!id) {
     return res.status(400).json({ message: "Transaction ID is required." });
   }
 
   try {
-    // Fetch transaction details from the database
+    // Fetch the transaction details from the database
     const transaction = await pool.query(
       "SELECT * FROM transactions WHERE id = $1",
       [id]
@@ -97,11 +100,22 @@ const getTransactionDetails = async (req, res) => {
       return res.status(404).json({ message: "Transaction not found." });
     }
 
-    res.status(200).json({ transaction: transaction.rows[0] });
+    const transactionDetails = transaction.rows[0];
+
+    // Check if the user is the sender or receiver of the transaction
+    if (
+      transactionDetails.sender_id !== userId &&
+      transactionDetails.receiver_id !== userId
+    ) {
+      return res
+        .status(403)
+        .json({ message: "You are not authorized to view this transaction." });
+    }
+
+    res.status(200).json({ transaction: transactionDetails });
   } catch (err) {
     console.error("Error fetching transaction details:", err);
     res.status(500).json({ message: "Internal server error." });
   }
 };
-
 module.exports = { initiateTransfer, getTransactionDetails };

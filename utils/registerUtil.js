@@ -30,11 +30,11 @@ const isValidNIN = (nin) => {
   return ninRegex.test(nin);
 };
 
-const doesUserExist = async (phone_number, nin) => {
+const doesUserExist = async (phoneNumber, nin) => {
   // Check if phone number or NIN already exists
   const existingUser = await pool.query(
     "SELECT * FROM users WHERE phone_number = $1 OR nin = $2",
-    [phone_number, nin]
+    [phoneNumber, nin]
   );
 
   return existingUser.rowCount > 0;

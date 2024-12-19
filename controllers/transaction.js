@@ -20,65 +20,91 @@ const initiateTransfer = async (req, res) => {
     });
   }
 
+  const client = await pool.connect();
   try {
-    // 1. Check if the sender exists and has enough balance
-    const sender = await pool.query("SELECT * FROM users WHERE id = $1", [
+    await client.query("BEGIN");
+
+    //  Check sender exists and has enough balance
+    const sender = await client.query("SELECT * FROM users WHERE id = $1", [
       senderId,
     ]);
     if (sender.rowCount === 0) {
-      return res.status(404).json({ message: "Sender not found." });
+      throw new Error("Sender not found.");
     }
-
     if (sender.rows[0].balance < amount) {
-      return res.status(400).json({ message: "Insufficient funds." });
+      throw new Error("Insufficient funds.");
     }
 
-    // 2. Find recipient based on phone number, NIN, or account number
+    // Find the recipient based on identifier type
     let recipient;
     if (recipientIdentifierType === "phone") {
-      recipient = await pool.query(
+      recipient = await client.query(
         "SELECT * FROM users WHERE phone_number = $1",
         [recipientIdentifier]
       );
     } else if (recipientIdentifierType === "nin") {
-      recipient = await pool.query("SELECT * FROM users WHERE nin = $1", [
+      recipient = await client.query("SELECT * FROM users WHERE nin = $1", [
         recipientIdentifier,
       ]);
     } else {
-      recipient = await pool.query(
+      recipient = await client.query(
         "SELECT * FROM users WHERE account_number = $1",
         [recipientIdentifier]
       );
     }
-
     if (recipient.rowCount === 0) {
-      return res.status(404).json({ message: "Recipient not found." });
+      throw new Error("Recipient not found.");
     }
-    // Deduct amount from sender's balance
-    await pool.query("UPDATE users SET balance = balance - $1 WHERE id = $2", [
-      amount,
-      senderId,
-    ]);
 
-    // Add amount to recipient's balance
-    await pool.query("UPDATE users SET balance = balance + $1 WHERE id = $2", [
-      amount,
-      recipient.rows[0].id,
-    ]);
+    // Deduct amount from sender
+    const updateSender = await client.query(
+      "UPDATE users SET balance = balance - $1 WHERE id = $2 RETURNING balance",
+      [amount, senderId]
+    );
+    if (updateSender.rowCount === 0) {
+      throw new Error("Failed to deduct sender balance.");
+    }
+
+    // Add amount to recipient
+    const updateRecipient = await client.query(
+      "UPDATE users SET balance = balance + $1 WHERE id = $2 RETURNING balance",
+      [amount, recipient.rows[0].id]
+    );
+    if (updateRecipient.rowCount === 0) {
+      throw new Error("Failed to update recipient balance.");
+    }
 
     // Record the transaction
-    await pool.query(
-      "INSERT INTO transactions (sender_id, receiver_id, amount, transaction_date, status, transaction_type, message) VALUES ($1, $2, $3, NOW(), $4, $5, $6)",
+    const transaction = await client.query(
+      "INSERT INTO transactions (sender_id, receiver_id, amount, transaction_date, status, transaction_type, message) VALUES ($1, $2, $3, NOW(), $4, $5, $6) RETURNING *",
       [senderId, recipient.rows[0].id, amount, "completed", "transfer", message]
     );
+    const tran = transaction.rows[0];
+    const transactionInfo = {
+      id: tran.id,
+      sender: sender.rows[0],
+      recipient: recipient.rows[0],
+      amount: tran.amount,
+      transactionDate: tran.transaction_date,
+      status: tran.status,
+      transactionType: tran.transaction_type,
+      message: tran.message,
+    };
 
-    res.status(200).json({ message: "Transfer successful." });
+    await client.query("COMMIT");
+    // Respond with transaction details
+    res.status(200).json({
+      message: "Transfer successful.",
+      transactionInfo,
+    });
   } catch (err) {
-    console.error("Error initiating transfer:", err);
-    res.status(500).json({ message: "Internal server error." });
+    await client.query("ROLLBACK"); // Undo all changes if an error occurs
+    console.error("Transaction error:", err.message);
+    res.status(500).json({ message: err.message || "Internal server error." });
+  } finally {
+    client.release(); // Release the database client
   }
 };
-
 const getTransactionDetails = async (req, res) => {
   const { id } = req.params;
 

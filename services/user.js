@@ -3,11 +3,11 @@ const pool = require("../db");
 // Create a new user
 const createUser = async (user) => {
   const {
-    first_name,
-    last_name,
+    firstName,
+    lastName,
     nin,
-    account_number,
-    phone_number,
+    accountNumber,
+    phoneNumber,
     password,
     role,
   } = user;
@@ -20,11 +20,11 @@ const createUser = async (user) => {
   `;
 
   const values = [
-    first_name,
-    last_name,
+    firstName,
+    lastName,
     nin,
-    account_number,
-    phone_number,
+    accountNumber,
+    phoneNumber,
     password,
     role,
     100, //For testing purposes
@@ -48,4 +48,62 @@ const findUserByPhone = async (phone) => {
   return result.rows[0];
 };
 
-module.exports = { createUser, findUserByNin, findUserByPhone };
+// Find user by ID
+const findUserById = async (id) => {
+  const query = `SELECT * FROM users WHERE id = $1;`;
+  const result = await pool.query(query, [id]);
+  return result.rows[0];
+};
+
+const findUserByIdentifier = async (
+  recipientIdentifierType,
+  recipientIdentifier
+) => {
+  let recipient;
+  if (recipientIdentifierType === "phone") {
+    recipient = await pool.query(
+      "SELECT * FROM users WHERE phone_number = $1",
+      [recipientIdentifier]
+    );
+  } else if (recipientIdentifierType === "nin") {
+    recipient = await pool.query("SELECT * FROM users WHERE nin = $1", [
+      recipientIdentifier,
+    ]);
+  } else {
+    recipient = await pool.query(
+      "SELECT * FROM users WHERE account_number = $1",
+      [recipientIdentifier]
+    );
+  }
+
+  return recipient.rows[0];
+};
+
+const updateUserDetails = async (userId, updates) => {
+  const { first_name, last_name, profile_picture } = updates;
+
+  const query = `
+    UPDATE users
+    SET 
+      first_name = COALESCE($1, first_name),
+      last_name = COALESCE($2, last_name),
+      profile_picture = COALESCE($3, profile_picture),
+      updated_at = NOW()
+    WHERE id = $4
+    RETURNING *;
+  `;
+
+  const values = [first_name, last_name, profile_picture, userId];
+
+  const result = await pool.query(query, values);
+  return result.rows[0];
+};
+
+module.exports = {
+  createUser,
+  findUserByNin,
+  findUserByPhone,
+  findUserByIdentifier,
+  findUserById,
+  updateUserDetails,
+};

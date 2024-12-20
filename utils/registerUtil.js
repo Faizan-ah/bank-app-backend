@@ -4,7 +4,7 @@ const isValidPhoneNumber = (phoneNumber) => {
   // The phone number can optionally start with a plus sign (+)
   // must be between 10 and 15 digits long
   // only contain numeric digits (0-9)
-  const phoneRegex = /^[+]?[0-9]{10,15}$/;
+  const phoneRegex = /^\+?[1-9]\d{1,14}$/;
   return phoneRegex.test(phoneNumber);
 };
 

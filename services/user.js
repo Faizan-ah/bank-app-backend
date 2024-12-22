@@ -10,12 +10,13 @@ const createUser = async (user) => {
     phoneNumber,
     password,
     role,
+    profilePicture,
   } = user;
 
   const query = `
     INSERT INTO users 
-    (first_name, last_name, nin, account_number, phone_number, password, role, balance) 
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+    (first_name, last_name, nin, account_number, phone_number, password, role, balance, profile_picture) 
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
     RETURNING *;
   `;
 
@@ -28,6 +29,7 @@ const createUser = async (user) => {
     password,
     role,
     100, //For testing purposes
+    profilePicture,
   ];
 
   const result = await pool.query(query, values);
@@ -87,7 +89,7 @@ const updateUserDetails = async (userId, updates) => {
     SET 
       first_name = COALESCE($1, first_name),
       last_name = COALESCE($2, last_name),
-      profile_picture = COALESCE($3, profile_picture),
+      profile_picture = $3,
       updated_at = NOW()
     WHERE id = $4
     RETURNING *;

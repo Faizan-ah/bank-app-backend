@@ -17,7 +17,8 @@ const {
 
 // Register user
 const registerUser = async (req, res) => {
-  const { firstName, lastName, nin, phoneNumber, password } = req.body;
+  const { firstName, lastName, nin, phoneNumber, password, profilePicture } =
+    req.body;
 
   if (!firstName || !lastName || !nin || !phoneNumber || !password) {
     return res.status(400).json({ message: "All fields are required." });
@@ -63,6 +64,7 @@ const registerUser = async (req, res) => {
       phoneNumber,
       password: hashedPassword,
       role: "user",
+      profilePicture,
     });
     delete newUser.password;
     res
@@ -163,13 +165,8 @@ const getUserByCredentials = async (req, res) => {
 };
 
 const updateUser = async (req, res) => {
-  const { first_name, last_name } = req.body;
+  const { first_name, last_name, profile_picture } = req.body;
   const userId = req.user.id;
-  let profilePicture = null;
-
-  // if (req.file) {
-  //   profilePicture = `/uploads/${req.file.filename}`;
-  // }
 
   try {
     // Check if user exists
@@ -182,7 +179,7 @@ const updateUser = async (req, res) => {
     const updatedUser = await updateUserDetails(userId, {
       first_name,
       last_name,
-      profile_picture: profilePicture,
+      profile_picture,
     });
 
     res.status(200).json({
@@ -195,7 +192,6 @@ const updateUser = async (req, res) => {
   }
 };
 
-module.exports = { updateUser };
 module.exports = {
   registerUser,
   loginUser,

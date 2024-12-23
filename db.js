@@ -12,7 +12,8 @@ const pool = new Pool({
     await pool.query("SELECT 1");
     console.log("Database connected successfully");
   } catch (error) {
-    console.error("Error connecting to the database:", error.message);
+    console.error("Error connecting to the database:", error);
+    console.error("Full error:", error); // Logs full error for debugging
   }
 })();
 module.exports = pool;

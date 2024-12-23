@@ -54,7 +54,7 @@ const requestMoney = async (req, res) => {
         pushToken: token,
         title: "Money Request",
         data: { type: "money_request", amount },
-        message: `${requester.rows[0].first_name} ${requester.rows[0].last_name} requested $${amount}.`,
+        message: `${requester.rows[0].first_name} ${requester.rows[0].last_name} requested $${amount}`,
       };
 
       const response = notificationSender.sendUserNotification(payload);

@@ -4,7 +4,7 @@ const isValidPhoneNumber = (phoneNumber) => {
   // Can start with an optional + for international dialing.
   // Must begin with a non-zero digit (1–9).
   // Must consist of digits only (after the optional +), with a total length between 2 and 15 digits
-  const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+  const phoneRegex = /^\+[1-9]\d{1,14}$/;
   return phoneRegex.test(phoneNumber);
 };
 

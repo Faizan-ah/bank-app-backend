@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 
 const userRoutes = require("./routes/user");
+const deviceTokenRoutes = require("./routes/deviceToken");
 const transactionRoutes = require("./routes/transaction");
 const requestMoneyRoutes = require("./routes/requestMoney");
 
@@ -15,6 +16,7 @@ app.use(cors());
 
 // Routes
 app.use("/api/users", userRoutes);
+app.use("/api/", deviceTokenRoutes);
 app.use("/api/", transactionRoutes);
 app.use("/api/", requestMoneyRoutes);
 

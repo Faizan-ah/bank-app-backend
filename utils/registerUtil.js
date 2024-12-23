@@ -1,9 +1,9 @@
 const pool = require("../db");
 
 const isValidPhoneNumber = (phoneNumber) => {
-  // The phone number can optionally start with a plus sign (+)
-  // must be between 10 and 15 digits long
-  // only contain numeric digits (0-9)
+  // Can start with an optional + for international dialing.
+  // Must begin with a non-zero digit (1–9).
+  // Must consist of digits only (after the optional +), with a total length between 2 and 15 digits
   const phoneRegex = /^\+?[1-9]\d{1,14}$/;
   return phoneRegex.test(phoneNumber);
 };

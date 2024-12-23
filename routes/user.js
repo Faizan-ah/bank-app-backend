@@ -20,7 +20,7 @@ router.post("/login", loginUser);
 router.get("/reciever", getUserByCredentials);
 
 // Get a user by ID
-router.get("/:id", getUser);
+router.get("/:id", authenticateToken, getUser);
 
 // Get logged in user details
 router.get("/", authenticateToken, getUser);

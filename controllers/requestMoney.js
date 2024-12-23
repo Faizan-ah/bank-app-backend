@@ -1,6 +1,6 @@
 const pool = require("../db");
 
-const authenticateToken = require("../middlewares/authMiddleware");
+const notificationSender = require("../utils/notification");
 
 const requestMoney = async (req, res) => {
   const { recipientPhone, amount } = req.body;
@@ -31,14 +31,35 @@ const requestMoney = async (req, res) => {
 
     if (recipient.rows[0].id === requesterId) {
       return res
-        .status(500)
+        .status(400)
         .json({ message: "Recipient and Requester can't be the same." });
     }
 
+    // Insert the money request
     await pool.query(
       "INSERT INTO money_requests (requester_id, recipient_id, amount, status) VALUES ($1, $2, $3, 'pending')",
       [requesterId, recipient.rows[0].id, amount]
     );
+
+    // Fetch the recipient's device tokens
+    const tokensResult = await pool.query(
+      "SELECT token FROM device_tokens WHERE user_id = $1",
+      [recipient.rows[0].id]
+    );
+
+    const token = tokensResult.rows[0].token;
+    console.log(token);
+    if (token.length > 0) {
+      const payload = {
+        pushToken: token,
+        title: "Money Request",
+        data: { type: "money_request", amount },
+        message: `${requester.rows[0].first_name} ${requester.rows[0].last_name} requested $${amount}.`,
+      };
+
+      const response = notificationSender.sendUserNotification(payload);
+      console.log("Push Notification Response:", response);
+    }
 
     res.status(200).json({ message: "Money request sent successfully." });
   } catch (err) {

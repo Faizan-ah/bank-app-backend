@@ -104,7 +104,7 @@ const loginUser = async (req, res) => {
     const token = jwt.sign(
       { id: user.id, role: user.role }, // Payload
       process.env.JWT_SECRET, // Secret key
-      { expiresIn: "1h" } // Expiration
+      { expiresIn: process.env.JWT_EXPIRATION_TIME } // Expiration
     );
     delete user.password;
     const userDto = user;
@@ -129,7 +129,6 @@ const getUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
-
     res.status(200).json({
       user,
     });
